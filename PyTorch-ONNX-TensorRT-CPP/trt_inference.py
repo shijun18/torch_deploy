@@ -1,3 +1,5 @@
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 from pytorch_model import preprocess_image, postprocess
 import torch
 import pycuda.driver as cuda

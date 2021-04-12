@@ -1,13 +1,15 @@
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 from pytorch_model import preprocess_image, postprocess
 import torch
 import pycuda.driver as cuda
 import pycuda.autoinit
 import numpy as np
 import tensorrt as trt
-import os
 
 
-ONNX_FILE_PATH = "resnet50.onnx"
+
+ONNX_FILE_PATH = "resnet50_sim.onnx"
 # logger to capture errors, warnings, and other information during the build and inference phases
 TRT_LOGGER = trt.Logger()
 explicit_batch = 1 << (int)(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
@@ -39,7 +41,7 @@ def build_engine(onnx_file_path):
 
 
 def main():
-    os.environ['CUDA_VISIBLE_DEVICES'] = '6'
+    
     # initialize TensorRT engine and parse ONNX model
     engine, context = build_engine(ONNX_FILE_PATH)
     # get sizes of input and output and allocate memory required for input data and for output data

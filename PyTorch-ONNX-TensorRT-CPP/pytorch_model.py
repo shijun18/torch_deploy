@@ -50,7 +50,7 @@ def postprocess(output_data):
 
 def main():
     # load pre-trained model -------------------------------------------------------------------------------------------
-    os.environ['CUDA_VISIBLE_DEVICES'] = '6'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '5'
     model = models.resnet50(pretrained=True)
 
     # preprocessing stage ----------------------------------------------------------------------------------------------
@@ -66,7 +66,7 @@ def main():
 
     # convert to ONNX --------------------------------------------------------------------------------------------------
     ONNX_FILE_PATH = "resnet50.onnx"
-    torch.onnx.export(model, input, ONNX_FILE_PATH, input_names=["input"], output_names=["output"], export_params=True)
+    torch.onnx.export(model, input, ONNX_FILE_PATH, input_names=["input"], opset_version=11, output_names=["output"], export_params=True)
 
     onnx_model = onnx.load(ONNX_FILE_PATH)
     # check that the model converted fine

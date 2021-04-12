@@ -101,7 +101,7 @@ class MnistModel(object):
             batch_size=self.test_batch_size,
             shuffle=True)
         # cuda
-        os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+        os.environ['CUDA_VISIBLE_DEVICES'] = '5'
         self.network = Net().cuda()
 
     # Train the network for one or more epochs, validating after each epoch.

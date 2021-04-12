@@ -52,14 +52,17 @@ import model
 from PIL import Image
 import numpy as np
 
-import pycuda.driver as cuda
-import pycuda.autoinit
+
 
 import tensorrt as trt
 
 import sys, os
+os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 sys.path.insert(1, os.path.join(sys.path[0], ".."))
 import common
+
+import pycuda.driver as cuda
+import pycuda.autoinit
 
 # You can set the logger severity higher to suppress messages (or lower to display more messages).
 TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
@@ -122,6 +125,7 @@ def load_random_test_case(model, pagelocked_buffer):
     return expected_output
 
 def main():
+    
     common.add_help(description="Runs an MNIST network using a PyTorch model")
     # Train the PyTorch model
     mnist_model = model.MnistModel()
@@ -142,4 +146,5 @@ def main():
             print("Prediction: " + str(pred))
 
 if __name__ == '__main__':
+    
     main()
