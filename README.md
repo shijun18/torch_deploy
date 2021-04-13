@@ -10,3 +10,7 @@ Learn to deploy torch model in production using TensorRT.
 - **Operating System**: ubantu 18.04
 - **Python Version**: 3.7
 - **PyTorch Version**: 1.7.1
+
+# TensorRT installation
+- [installation guide](https://docs.nvidia.com/deeplearning/tensorrt/archives/tensorrt-722/install-guide/index.html#installing-tar)
+- [python API doc](https://docs.nvidia.com/deeplearning/tensorrt/api/python_api/index.html)
