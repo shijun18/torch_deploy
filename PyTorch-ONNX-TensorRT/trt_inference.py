@@ -12,38 +12,50 @@ import tensorrt as trt
 ONNX_FILE_PATH = "resnet50_sim.onnx"
 # logger to capture errors, warnings, and other information during the build and inference phases
 TRT_LOGGER = trt.Logger()
-explicit_batch = 1 << (int)(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
 
-def build_engine(onnx_file_path):
+
+def build_engine(onnx_file_path,engine_file_path='engine.trt',save_engine=True):
     # initialize TensorRT engine and parse ONNX model
-    with trt.Builder(TRT_LOGGER) as  builder, builder.create_network(explicit_batch) as network, trt.OnnxParser(network, TRT_LOGGER) as parser:
+    if os.path.exists(engine_file_path):
+        print("Reading engine from file: {}".format(engine_file_path))
+        with open(engine_file_path, 'rb') as f, \
+            trt.Runtime(TRT_LOGGER) as runtime:
+            engine = runtime.deserialize_cuda_engine(f.read())
+    
+    else:
+        explicit_batch = 1 << (int)(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
+        with trt.Builder(TRT_LOGGER) as  builder, builder.create_network(explicit_batch) as network, trt.OnnxParser(network, TRT_LOGGER) as parser:
 
-        # allow TensorRT to use up to 1GB of GPU memory for tactic selection
-        builder.max_workspace_size = 1 << 30
-        # we have only one image in batch
-        builder.max_batch_size = 1
-        # use FP16 mode if possible
-        if builder.platform_has_fast_fp16:
-            builder.fp16_mode = True
+            # allow TensorRT to use up to 1GB of GPU memory for tactic selection
+            builder.max_workspace_size = 1 << 30
+            # we have only one image in batch
+            builder.max_batch_size = 1
+            # use FP16 mode if possible
+            if builder.platform_has_fast_fp16:
+                builder.fp16_mode = True
 
-        # parse ONNX
-        with open(onnx_file_path, 'rb') as model:
-            print('Beginning ONNX file parsing')
-            parser.parse(model.read())
-        print('Completed parsing of ONNX file')
+            # parse ONNX
+            with open(onnx_file_path, 'rb') as model:
+                print('Beginning ONNX file parsing')
+                parser.parse(model.read())
+            print('Completed parsing of ONNX file')
 
-        # generate TensorRT engine optimized for the target platform
-        print('Building an engine...')
-        engine = builder.build_cuda_engine(network)
-        context = engine.create_execution_context()
-        print("Completed creating Engine")
-        return engine, context
+            # generate TensorRT engine optimized for the target platform
+            print('Building an engine...')
+            engine = builder.build_cuda_engine(network)
+            print("Completed creating Engine")
+            if save_engine:  #save engine
+                with open(engine_file_path, 'wb') as f:
+                    f.write(engine.serialize())  
+
+    context = engine.create_execution_context()
+    return engine, context
 
 
 def main():
     
     # initialize TensorRT engine and parse ONNX model
-    engine, context = build_engine(ONNX_FILE_PATH)
+    engine, context = build_engine(ONNX_FILE_PATH,'resnet50_sim.trt')
     # get sizes of input and output and allocate memory required for input data and for output data
     for binding in engine:
         if engine.binding_is_input(binding):  # we expect only one input

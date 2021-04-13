@@ -63,7 +63,7 @@ def main():
     data_list = get_path_with_annotation(csv_path,'path','Bladder')
 
 
-    model = unet_2d(n_channels=1, n_classes=2, bilinear=True)
+    model = unet_2d(n_channels=1, n_classes=2)
     checkpoint = torch.load(weight_path)
     model.load_state_dict(checkpoint['state_dict'])
 
@@ -80,10 +80,13 @@ def main():
     dice = postprocess(output, target)
 
     # convert to ONNX --------------------------------------------------------------------------------------------------
+    # dynamic
+    # ONNX_FILE_PATH = "unet_bladder_dynamic.onnx"
     ONNX_FILE_PATH = "unet_bladder.onnx"
     # input = torch.randn(8, 1, 512, 512, device='cuda')
-    torch.onnx.export(model, input, ONNX_FILE_PATH, input_names=["input"], output_names=["output"], export_params=True, opset_version=11,dynamic_axes={"input":{0:'batch_size'}, "output":{0:'batch_size'}})
-
+    
+    # torch.onnx.export(model, input, ONNX_FILE_PATH, input_names=["input"], output_names=["output"], export_params=True, opset_version=11,dynamic_axes={"input":{0:'batch_size'}, "output":{0:'batch_size'}})
+    torch.onnx.export(model, input, ONNX_FILE_PATH, input_names=["input"], output_names=["output"], export_params=True, opset_version=11)
     onnx_model = onnx.load(ONNX_FILE_PATH)
     # check that the model converted fine
     onnx.checker.check_model(onnx_model)

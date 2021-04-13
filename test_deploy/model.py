@@ -78,26 +78,21 @@ class Down3D(nn.Module):
 class Up2D(nn.Module):
     """Upscaling then double conv"""
 
-    def __init__(self, in_channels, out_channels, conv_builder, bilinear=True):
+    def __init__(self, in_channels, out_channels, conv_builder):
         super(Up2D,self).__init__()
-
-        # if bilinear, use the normal convolutions to reduce the number of channels
-        if bilinear:
-            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-            self.conv = conv_builder(in_channels, out_channels, in_channels // 2)
-        else:
-            self.up = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
-            self.conv = conv_builder(in_channels, out_channels)
+        self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)
+        self.conv = conv_builder(in_channels, out_channels, in_channels // 2)
 
 
     def forward(self, x1, x2):
         x1 = self.up(x1)
+        # x1 = F.interpolate(x1,scale_factor=2,mode='bilinear', align_corners=False)
         # input is CHW
-        diffY = x2.size()[2] - x1.size()[2]
-        diffX = x2.size()[3] - x1.size()[3]
+        # diffY = x2.size()[2] - x1.size()[2]
+        # diffX = x2.size()[3] - x1.size()[3]
 
-        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
-                        diffY // 2, diffY - diffY // 2])
+        # x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
+        #                 diffY // 2, diffY - diffY // 2])
 
         x = torch.cat([x2, x1], dim=1)
         return self.conv(x)
@@ -106,28 +101,25 @@ class Up2D(nn.Module):
 class Up3D(nn.Module):
     """Upscaling then double conv"""
 
-    def __init__(self, in_channels, out_channels, conv_builder, bilinear=True):
+    def __init__(self, in_channels, out_channels, conv_builder):
         super(Up3D,self).__init__()
-
+        self.up = nn.Upsample(scale_factor=2, mode='trilinear', align_corners=False)
         # if bilinear, use the normal convolutions to reduce the number of channels
-        if bilinear:
-            self.up = nn.Upsample(scale_factor=2, mode='trilinear', align_corners=True)
-            self.conv = conv_builder(in_channels, out_channels, in_channels // 2)
-        else:
-            self.up = nn.ConvTranspose3d(in_channels, in_channels // 2, kernel_size=2, stride=2)
-            self.conv = conv_builder(in_channels, out_channels)
+        self.conv = conv_builder(in_channels, out_channels, in_channels // 2)
 
 
     def forward(self, x1, x2):
         x1 = self.up(x1)
+        # x1 = F.interpolate(x1,scale_factor=2,mode='trilinear', align_corners=False)
+        
         # input is CDHW
-        diffD = x2.size()[2] - x1.size()[2]
-        diffH = x2.size()[3] - x1.size()[3]
-        diffW = x2.size()[4] - x1.size()[4]
+        # diffD = x2.size()[2] - x1.size()[2]
+        # diffH = x2.size()[3] - x1.size()[3]
+        # diffW = x2.size()[4] - x1.size()[4]
 
-        x1 = F.pad(x1, [diffD // 2, diffD - diffD // 2,
-                        diffH // 2, diffH - diffH // 2,
-                        diffW // 2, diffW - diffW // 2])
+        # x1 = F.pad(x1, [diffD // 2, diffD - diffD // 2,
+        #                 diffH // 2, diffH - diffH // 2,
+        #                 diffW // 2, diffW - diffW // 2])
 
         x = torch.cat([x2, x1], dim=1)
         return self.conv(x)
@@ -154,24 +146,23 @@ class Tail3D(nn.Module):
 #-------------------------------------------
 
 class UNet(nn.Module):
-    def __init__(self, stem, down, up, tail, width, conv_builder, n_channels=1, n_classes=2, bilinear=True, dropout_flag=True):
+    def __init__(self, stem, down, up, tail, width, conv_builder, n_channels=1, n_classes=2, dropout_flag=True):
         super(UNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
-        self.bilinear = bilinear
         self.width = width
         self.dropout_flag = dropout_flag
-        factor = 2 if bilinear else 1
+        factor = 2 
 
         self.inc = stem(n_channels, width[0])
         self.down1 = down(width[0], width[1], conv_builder)
         self.down2 = down(width[1], width[2], conv_builder)
         self.down3 = down(width[2], width[3], conv_builder)
         self.down4 = down(width[3], width[4] // factor, conv_builder)
-        self.up1 = up(width[4], width[3] // factor, conv_builder, bilinear=self.bilinear)
-        self.up2 = up(width[3], width[2]// factor, conv_builder, bilinear=self.bilinear)
-        self.up3 = up(width[2], width[1] // factor, conv_builder, bilinear=self.bilinear)
-        self.up4 = up(width[1], width[0], conv_builder, bilinear=self.bilinear)
+        self.up1 = up(width[4], width[3] // factor, conv_builder)
+        self.up2 = up(width[3], width[2]// factor, conv_builder)
+        self.up3 = up(width[2], width[1] // factor, conv_builder)
+        self.up4 = up(width[1], width[0], conv_builder)
         self.dropout = nn.Dropout(p=0.5)
         self.outc = tail(width[0], n_classes)
 
@@ -215,8 +206,8 @@ def unet_3d(**kwargs):
 
 if __name__ == "__main__":
   
-  net = unet_2d(n_channels=1, n_classes=2, bilinear=True)
-#   net = unet_3d(n_channels=1, n_classes=2, bilinear=True)
+  net = unet_2d(n_channels=1, n_classes=2)
+#   net = unet_3d(n_channels=1, n_classes=2)
 
   from torchsummary import summary
   import os 
