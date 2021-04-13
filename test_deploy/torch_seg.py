@@ -21,7 +21,7 @@ data_list = get_path_with_annotation(csv_path,'path','Bladder')
 print(len(data_list))
 
 
-model = unet_2d(n_channels=1, n_classes=2, bilinear=True)
+model = unet_2d(n_channels=1, n_classes=2)
 checkpoint = torch.load(weight_path)
 model.load_state_dict(checkpoint['state_dict'])
 
