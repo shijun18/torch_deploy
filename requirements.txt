@@ -1,0 +1,9 @@
+torch==1.7.1
+torchvision==0.8.2
+torchsummary==1.5.1
+h5py==3.2.1
+onnx==1.8.1
+opencv-python==4.5.1.48
+scikit-image==0.18.1
+pycuda==2021.1
+pandas==1.1.5
