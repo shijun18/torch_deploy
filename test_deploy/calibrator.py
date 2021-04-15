@@ -33,11 +33,11 @@ def load_data(data_list):
     return np.ascontiguousarray(image_array.astype(np.float32))
 
 
-class UNETEntropyCalibrator(trt.IInt8EntropyCalibrator2):
+class UNETEntropyCalibrator(trt.IInt8MinMaxCalibrator):
     def __init__(self, data_list, cache_file, batch_size=8):
         # Whenever you specify a custom constructor for a TensorRT class,
         # you MUST call the constructor of the parent explicitly.
-        trt.IInt8EntropyCalibrator2.__init__(self)
+        trt.IInt8MinMaxCalibrator.__init__(self)
 
         self.cache_file = cache_file
 

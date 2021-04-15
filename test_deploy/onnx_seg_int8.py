@@ -87,8 +87,8 @@ def main():
     # initialize TensorRT engine and parse ONNX model
     calibration_cache = "unet_calibration.cache"
     calib = UNETEntropyCalibrator(data_list[:128], cache_file=calibration_cache,batch_size=32)
-    # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8.trt',save_engine=True,calib=calib)
-    engine, context = build_engine(ONNX_FILE_PATH,calib=calib)
+    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8.trt',save_engine=True,calib=calib)
+    # engine, context = build_engine(ONNX_FILE_PATH,calib=calib)
     # get sizes of input and output and allocate memory required for input data and for output data
     for binding in engine:
         if engine.binding_is_input(binding):  # we expect only one input

@@ -8,7 +8,7 @@ from utils import get_path_with_annotation,preprocess_image,postprocess
 from model import unet_2d
 
 
-AMP_FLAG = False
+AMP_FLAG = True
 
 s_time = time.time()
 
