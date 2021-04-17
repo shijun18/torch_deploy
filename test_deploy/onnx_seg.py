@@ -8,12 +8,13 @@ import numpy as np
 import tensorrt as trt
 import time
 
-from utils import get_path_with_annotation,preprocess_image,postprocess
+from utils import get_path_with_annotation,postprocess,DataIterator
 from multiprocessing import Pool
-
+from torch.utils.data import DataLoader
 
 # logger to capture errors, warnings, and other information during the build and inference phases
 TRT_LOGGER = trt.Logger()
+DATA_LEN = 10000
 
 
 def build_engine(onnx_file_path,engine_file_path=None,save_engine=False):
@@ -102,78 +103,35 @@ def main():
     dice_list = []
     # preprocess input data
 
-    for item in data_list:
-        img, lab = preprocess_image(item)
+    dataset = DataIterator(path_list=data_list,batch_size=1,roi_number=1,data_len=356)
+    data_loader = iter(dataset)
+
+    for sample in data_loader:
+        img = sample['image']
+        lab = sample['label']
+ 
         host_input = np.array(img, dtype=np.float32, order='C')
+        # print(host_input.shape)
         cuda.memcpy_htod_async(device_input, host_input, stream)
 
         # run inference
-        context.execute_async(bindings=[int(device_input), int(device_output)], stream_handle=stream.handle)
+        context.execute_async(batch_size=1, bindings=[int(device_input), int(device_output)], stream_handle=stream.handle)
         cuda.memcpy_dtoh_async(host_output, device_output, stream)
         stream.synchronize()
 
         # postprocess results
         
         output_data = torch.Tensor(host_output).reshape(engine.max_batch_size, 2, 512, 512)
+        # dice = postprocess(output_data,torch.unsqueeze(torch.from_numpy(lab),0))
         dice = postprocess(output_data,lab)
         dice_list.append(dice)
     
-    print('run time: %.3f' % (time.time() - s_time))
+    total_time = time.time() - s_time
+    print('run time: %.3f' % total_time)
     print('ave dice: %.4f' % np.mean(dice_list))
-
-'''
-def process(item):
-    # initialize TensorRT engine and parse ONNX model
-    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_fp16.trt')
-    # get sizes of input and output and allocate memory required for input data and for output data
-    for binding in engine:
-        if engine.binding_is_input(binding):  # we expect only one input
-            input_shape = engine.get_binding_shape(binding)
-            input_size = trt.volume(input_shape) * engine.max_batch_size * np.dtype(np.float32).itemsize  # in bytes
-            device_input = cuda.mem_alloc(input_size)
-        else:  # and one output
-            output_shape = engine.get_binding_shape(binding)
-            # create page-locked memory buffers (i.e. won't be swapped to disk)
-            host_output = cuda.pagelocked_empty(trt.volume(output_shape) * engine.max_batch_size, dtype=np.float32)
-            device_output = cuda.mem_alloc(host_output.nbytes)
-
-    # Create a stream in which to copy inputs/outputs and run inference.
-    stream = cuda.Stream()
-
-    
-    # preprocess input data
-
-    img, lab = preprocess_image(item)
-    host_input = np.array(img, dtype=np.float32, order='C')
-    cuda.memcpy_htod_async(device_input, host_input, stream)
-
-    # run inference
-    context.execute_async(bindings=[int(device_input), int(device_output)], stream_handle=stream.handle)
-    cuda.memcpy_dtoh_async(host_output, device_output, stream)
-    stream.synchronize()
-
-    # postprocess results
-    
-    output_data = torch.Tensor(host_output).reshape(engine.max_batch_size, 2, 512, 512)
-    dice = postprocess(output_data,lab)
-    dice_list.append(dice)
-'''    
-    
+    print('fps: %.3f' %(DATA_LEN/total_time))
 
 
 if __name__ == '__main__':
-
-    # s_time = time.time()
-    # global dice_list
-    # csv_path = '/staff/shijun/torch_projects/Med_Seg/converter/dcm_converter/static_files/cervical_test.csv'
-    # weight_path = '/staff/shijun/torch_projects/Med_Seg/seg/ckpt/Cervical/2d_clean/v1.3/Bladder/fold1/epoch:127-train_loss:0.10719-train_dice:0.93932-val_loss:0.09868-val_dice:0.94423.pth'
-
-    # data_list = get_path_with_annotation(csv_path,'path','Bladder')
-
-    # pool = Pool(processes=10)
-    # pool.map(process,data_list)
-
-    # print('run time: %.3f' % (time.time() - s_time))
-    # print('ave dice: %.4f' % np.mean(dice_list))
 
     main()

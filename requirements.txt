@@ -7,3 +7,4 @@ opencv-python==4.5.1.48
 scikit-image==0.18.1
 pycuda==2021.1
 pandas==1.1.5
+torch2trt==0.2.0

@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '6'
+os.environ['CUDA_VISIBLE_DEVICES'] = '7'
 
 import torch
 import pycuda.driver as cuda
@@ -8,14 +8,15 @@ import numpy as np
 import tensorrt as trt
 import time
 
-from utils import get_path_with_annotation,preprocess_image, postprocess
+from utils import get_path_with_annotation, postprocess, DataIterator
 from calibrator import UNETEntropyCalibrator
+from torch.utils.data import DataLoader
 
 
 
 # logger to capture errors, warnings, and other information during the build and inference phases
 TRT_LOGGER = trt.Logger()
-
+DATA_LEN = 1000
 
 def build_engine(onnx_file_path,engine_file_path=None,save_engine=False, calib=None):
     # initialize TensorRT engine and parse ONNX model
@@ -107,8 +108,13 @@ def main():
     dice_list = []
     # preprocess input data
 
-    for item in data_list:
-        img, lab = preprocess_image(item)
+    dataset = DataIterator(path_list=data_list,batch_size=1,roi_number=1,data_len=DATA_LEN)
+    data_loader = iter(dataset)
+
+
+    for sample in data_loader:
+        img = sample['image']
+        lab = sample['label']
         host_input = np.array(img, dtype=np.float32, order='C')
         cuda.memcpy_htod_async(device_input, host_input, stream)
 
@@ -123,8 +129,10 @@ def main():
         dice = postprocess(output_data,lab)
         dice_list.append(dice)
     
-    print('run time: %.3f' % (time.time() - s_time))
+    total_time = time.time() - s_time
+    print('run time: %.3f' % total_time)
     print('ave dice: %.4f' % np.mean(dice_list))
+    print('fps: %.3f' %(DATA_LEN/total_time))
 
 
 

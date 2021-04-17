@@ -1,11 +1,11 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '7'
+os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 import onnx
 import torch
 
 import numpy as np
 
-from utils import hdf5_reader,get_path_with_annotation,preprocess_image,postprocess
+from utils import get_path_with_annotation,preprocess_image,postprocess
 from model import unet_2d
 
 import tensorrt as trt
@@ -57,17 +57,20 @@ def main():
     dice = postprocess(output, target)
 
     # convert to trt --------------------------------------------------------------------------------------------------
-    # TRT_FILE_PATH = "unet_bladder_trt_int8.pth" #0.89
-    TRT_FILE_PATH = "unet_bladder_trt_cali_int8.pth" #0.9219
+    # TRT_FILE_PATH = "unet_bladder_trt_fp16_p40.pth" #0.9236
+    # TRT_FILE_PATH = "unet_bladder_trt_int8_p40.pth" #0.89
+    TRT_FILE_PATH = "unet_bladder_trt_cali_int8_p40.pth" #0.9219
     data = torch.randn(1, 1, 512, 512).cuda()
-    
 
+    # FP16
+    # model_trt = torch2trt(model, [data], fp16_mode=True)
+    
+    # Int 8 
     # Plan A --------------------------------------------------------------------------------------------------
     # It's OK
-    # model_trt = torch2trt(model, [data], int8_mode=True, int8_calib_algorithm=trt.CalibrationAlgoType.MINMAX_CALIBRATION,int8_calib_batch_size=32)
+    # model_trt = torch2trt(model, [data], int8_mode=True, int8_calib_algorithm=trt.CalibrationAlgoType.MINMAX_CALIBRATION, int8_calib_batch_size=32)
 
     # Plan B --------------------------------------------------------------------------------------------------
-    # add calibrator but the result is zero, why?
     dataset = ImageCalibDataset(data_list=data_list[:128])
     model_trt = torch2trt(model, [data], int8_calib_dataset=dataset, int8_calib_algorithm=trt.CalibrationAlgoType.MINMAX_CALIBRATION, int8_mode=True, int8_calib_batch_size=32)
     
