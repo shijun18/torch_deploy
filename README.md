@@ -513,7 +513,7 @@ torch.save(model_trt.state_dict(), TRT_FILE_PATH)
     | torch2trt + calibrator | P40  | 10000    |             |      |
     | torch2trt + calibrator | P40  | 1000     |             |      |
 
-
+:cry:*由于在实验室没法独享机器，测试的数据不准确，分析和后续测试会补充！*
 
 
 
