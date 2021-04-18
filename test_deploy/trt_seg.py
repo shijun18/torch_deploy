@@ -11,17 +11,18 @@ from torch.utils.data import DataLoader
 
 
 
-DATA_LEN = 1000
+DATA_LEN = 10000
 
 s_time = time.time()
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '6'
+os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 
 csv_path = 'test.csv'
 # weight_path = 'unet_bladder_trt_int8.pth'
+# weight_path = "unet_bladder_trt_cali_int8_p40.pth"
 # weight_path = "unet_bladder_trt_cali_int8.pth"
-# weight_path = "unet_bladder_trt_fp16.pth"
-weight_path = "unet_bladder_trt_fp16_p40.pth"
+weight_path = "unet_bladder_trt_fp16.pth"
+# weight_path = "unet_bladder_trt_fp16_p40.pth"
 
 data_list = get_path_with_annotation(csv_path,'path','Bladder')
 print(len(data_list))

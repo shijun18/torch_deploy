@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '5'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 import torch
 import pycuda.driver as cuda
@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 
 # logger to capture errors, warnings, and other information during the build and inference phases
 TRT_LOGGER = trt.Logger()
-DATA_LEN = 10000
+DATA_LEN = 1000
 
 
 def build_engine(onnx_file_path,engine_file_path=None,save_engine=False):
@@ -84,7 +84,8 @@ def main():
 
     data_list = get_path_with_annotation(csv_path,'path','Bladder')
     # initialize TensorRT engine and parse ONNX model
-    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_fp16.trt',True)
+    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_fp16_p40.trt')
+    # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_fp16.trt')
     # get sizes of input and output and allocate memory required for input data and for output data
     for binding in engine:
         if engine.binding_is_input(binding):  # we expect only one input
@@ -103,7 +104,7 @@ def main():
     dice_list = []
     # preprocess input data
 
-    dataset = DataIterator(path_list=data_list,batch_size=1,roi_number=1,data_len=356)
+    dataset = DataIterator(path_list=data_list,batch_size=1,roi_number=1,data_len=DATA_LEN)
     data_loader = iter(dataset)
 
     for sample in data_loader:

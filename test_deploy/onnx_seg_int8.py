@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '7'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 import torch
 import pycuda.driver as cuda
@@ -86,9 +86,9 @@ def main():
 
     data_list = get_path_with_annotation(csv_path,'path','Bladder')
     # initialize TensorRT engine and parse ONNX model
-    calibration_cache = "unet_calibration.cache"
+    calibration_cache = "unet_calibration_p40.cache"
     calib = UNETEntropyCalibrator(data_list[:128], cache_file=calibration_cache,batch_size=32)
-    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8.trt',save_engine=True,calib=calib)
+    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_p40.trt',save_engine=True,calib=calib)
     # engine, context = build_engine(ONNX_FILE_PATH,calib=calib)
     # get sizes of input and output and allocate memory required for input data and for output data
     for binding in engine:

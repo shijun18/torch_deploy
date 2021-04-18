@@ -266,14 +266,14 @@ output = model_trt(img)
     | torch + 混合精度 | V100 | 1000     | 25.705      | 38.903     |
     | torch + 混合精度 | P40  | 10000    | 474.733     | 21.064     |
     | torch + 混合精度 | P40  | 1000     | 53.330      | 18.751     |
-    | onnx + TensorRT  | V100 | 10000    | 763.919     | 13.090     |
-    | onnx + TensorRT  | V100 | 1000     |             |            |
-    | onnx + TensorRT  | P40  | 10000    |             |            |
-    | onnx + TensorRT  | P40  | 1000     |             |            |
-    | torch2trt        | V100 | 10000    | 100.290     | **99.711** |
+    | onnx + TensorRT  | V100 | 10000    | 729.698     | 13.704     |
+    | onnx + TensorRT  | V100 | 1000     | 82.376      | 12.021     |
+    | onnx + TensorRT  | P40  | 10000    | 949.490     | 10.532     |
+    | onnx + TensorRT  | P40  | 1000     | 99.546      | 10.046     |
+    | torch2trt        | V100 | 10000    | **100.290** | **99.711** |
     | torch2trt        | V100 | 1000     | 33.148      | 30.168     |
     | torch2trt        | P40  | 10000    | 247.966     | 40.328     |
-    | torch2trt        | P40  | 1000     | 40.923      | 24.436     |
+    | torch2trt        | P40  | 1000     | 34.430      | 29.044     |
 
 
 
@@ -495,20 +495,23 @@ torch.save(model_trt.state_dict(), TRT_FILE_PATH)
 
 ##### 结果分析
 
-| 方案                   | GPU  | #Samples | runtime (s) | FPS  |
-| ---------------------- | ---- | -------- | ----------- | ---- |
-| onnx + TensorRT        | V100 | 10000    |             |      |
-| onnx + TensorRT        | V100 | 1000     |             |      |
-| onnx + TensorRT        | P40  | 10000    |             |      |
-| onnx + TensorRT        | P40  | 1000     |             |      |
-| torch2trt              | V100 | 10000    |             |      |
-| torch2trt              | V100 | 1000     |             |      |
-| torch2trt              | P40  | 10000    |             |      |
-| torch2trt              | P40  | 1000     |             |      |
-| torch2trt + calibrator | V100 | 10000    |             |      |
-| torch2trt + calibrator | V100 | 1000     |             |      |
-| torch2trt + calibrator | P40  | 10000    |             |      |
-| torch2trt + calibrator | P40  | 1000     |             |      |
+- **Int8**推理
+  - **Batch Size = 1**
+
+    | 方案                   | GPU  | #Samples | runtime (s) | FPS  |
+    | ---------------------- | ---- | -------- | ----------- | ---- |
+    | onnx + TensorRT        | V100 | 10000    |             |      |
+    | onnx + TensorRT        | V100 | 1000     |             |      |
+    | onnx + TensorRT        | P40  | 10000    |             |      |
+    | onnx + TensorRT        | P40  | 1000     |             |      |
+    | torch2trt              | V100 | 10000    |             |      |
+    | torch2trt              | V100 | 1000     |             |      |
+    | torch2trt              | P40  | 10000    |             |      |
+    | torch2trt              | P40  | 1000     |             |      |
+    | torch2trt + calibrator | V100 | 10000    |             |      |
+    | torch2trt + calibrator | V100 | 1000     |             |      |
+    | torch2trt + calibrator | P40  | 10000    |             |      |
+    | torch2trt + calibrator | P40  | 1000     |             |      |
 
 
 
