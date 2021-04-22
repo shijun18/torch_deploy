@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '6'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 import onnx
 import torch
 
@@ -57,22 +57,29 @@ def main():
     dice = postprocess(output, target)
 
     # convert to trt --------------------------------------------------------------------------------------------------
-    # TRT_FILE_PATH = "unet_bladder_trt_fp16_p40.pth" #0.9236
-    # TRT_FILE_PATH = "unet_bladder_trt_int8_p40.pth" #0.89
-    TRT_FILE_PATH = "unet_bladder_trt_cali_int8_p40.pth" #0.9219
+    # TRT_FILE_PATH = "unet_bladder_trt_fp16_p40.pth" 
+    # TRT_FILE_PATH = "unet_bladder_trt_fp16_bs8_p40.pth" 
+    # TRT_FILE_PATH = "unet_bladder_trt_int8_bs8_p40.pth" 
+    TRT_FILE_PATH = "unet_bladder_trt_cali_int8_bs8_p40.pth"
+
+    # TRT_FILE_PATH = "unet_bladder_trt_fp16.pth" 
+    # TRT_FILE_PATH = "unet_bladder_trt_fp16_bs4.pth" 
+    # TRT_FILE_PATH = "unet_bladder_trt_int8_bs4.pth" 
+    # TRT_FILE_PATH = "unet_bladder_trt_cali_int8_bs4.pth" 
+
     data = torch.randn(1, 1, 512, 512).cuda()
 
     # FP16
-    # model_trt = torch2trt(model, [data], fp16_mode=True)
+    # model_trt = torch2trt(model,[data], max_batch_size=8, fp16_mode=True)
     
     # Int 8 
     # Plan A --------------------------------------------------------------------------------------------------
     # It's OK
-    # model_trt = torch2trt(model, [data], int8_mode=True, int8_calib_algorithm=trt.CalibrationAlgoType.MINMAX_CALIBRATION, int8_calib_batch_size=32)
+    # model_trt = torch2trt(model, [data], max_batch_size=8, int8_mode=True, int8_calib_algorithm=trt.CalibrationAlgoType.MINMAX_CALIBRATION, int8_calib_batch_size=32)
 
     # Plan B --------------------------------------------------------------------------------------------------
     dataset = ImageCalibDataset(data_list=data_list[:128])
-    model_trt = torch2trt(model, [data], int8_calib_dataset=dataset, int8_calib_algorithm=trt.CalibrationAlgoType.MINMAX_CALIBRATION, int8_mode=True, int8_calib_batch_size=32)
+    model_trt = torch2trt(model, [data], max_batch_size=8, int8_calib_dataset=dataset, int8_calib_algorithm=trt.CalibrationAlgoType.MINMAX_CALIBRATION, int8_mode=True, int8_calib_batch_size=32)
     
     # Note:
     # use data calibrator can improve the accuracy of the quantized model

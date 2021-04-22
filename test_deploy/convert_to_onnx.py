@@ -41,7 +41,7 @@ def main():
     ONNX_FILE_PATH = "unet_bladder.onnx"
     # input = torch.randn(8, 1, 512, 512, device='cuda')
     
-    # torch.onnx.export(model, input, ONNX_FILE_PATH, input_names=["input"], output_names=["output"], export_params=True, opset_version=11,dynamic_axes={"input":{0:'batch_size'}, "output":{0:'batch_size'}})
+    # torch.onnx.export(model, input, ONNX_FILE_PATH, input_names=["input"], output_names=["output"], export_params=True, opset_version=11, dynamic_axes={"input":{0:'batch_size'}, "output":{0:'batch_size'}})
     torch.onnx.export(model, input, ONNX_FILE_PATH, input_names=["input"], output_names=["output"], export_params=True, opset_version=11)
     onnx_model = onnx.load(ONNX_FILE_PATH)
     # check that the model converted fine

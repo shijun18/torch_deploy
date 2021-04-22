@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 
 import torch
 import pycuda.driver as cuda
@@ -9,14 +9,14 @@ import tensorrt as trt
 import time
 
 from utils import get_path_with_annotation, postprocess, DataIterator
-from calibrator import UNETEntropyCalibrator
+from calibrator import UNETCalibrator
 from torch.utils.data import DataLoader
 
 
 
 # logger to capture errors, warnings, and other information during the build and inference phases
 TRT_LOGGER = trt.Logger()
-DATA_LEN = 1000
+DATA_LEN = 10000
 
 def build_engine(onnx_file_path,engine_file_path=None,save_engine=False, calib=None):
     # initialize TensorRT engine and parse ONNX model
@@ -35,7 +35,7 @@ def build_engine(onnx_file_path,engine_file_path=None,save_engine=False, calib=N
             # allow TensorRT to use up to 1GB of GPU memory for tactic selection
             builder.max_workspace_size = 1 << 30
             # we have only one image in batch
-            builder.max_batch_size = 1
+            builder.max_batch_size = 8
             builder.int8_mode = True
 
             # config    
@@ -87,9 +87,16 @@ def main():
     data_list = get_path_with_annotation(csv_path,'path','Bladder')
     # initialize TensorRT engine and parse ONNX model
     calibration_cache = "unet_calibration_p40.cache"
-    calib = UNETEntropyCalibrator(data_list[:128], cache_file=calibration_cache,batch_size=32)
-    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_p40.trt',save_engine=True,calib=calib)
-    # engine, context = build_engine(ONNX_FILE_PATH,calib=calib)
+    # calibration_cache = "unet_calibration.cache"
+
+    # calib = UNETCalibrator(data_list[:128], cache_file=calibration_cache,batch_size=32)
+
+    # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs8_p40.trt',save_engine=True,calib=calib)
+    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs8_p40.trt',save_engine=False)
+
+    # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs8.trt',save_engine=True,calib=calib)
+    # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs8.trt',save_engine=False)
+
     # get sizes of input and output and allocate memory required for input data and for output data
     for binding in engine:
         if engine.binding_is_input(binding):  # we expect only one input
@@ -111,10 +118,12 @@ def main():
     dataset = DataIterator(path_list=data_list,batch_size=1,roi_number=1,data_len=DATA_LEN)
     data_loader = iter(dataset)
 
-
+    tmp_total_time = 0
     for sample in data_loader:
         img = sample['image']
         lab = sample['label']
+
+        tmp_time = time.time()
         host_input = np.array(img, dtype=np.float32, order='C')
         cuda.memcpy_htod_async(device_input, host_input, stream)
 
@@ -122,6 +131,8 @@ def main():
         context.execute_async(batch_size=1,bindings=[int(device_input), int(device_output)], stream_handle=stream.handle)
         cuda.memcpy_dtoh_async(host_output, device_output, stream)
         stream.synchronize()
+
+        tmp_total_time += time.time() - tmp_time
 
         # postprocess results
         
@@ -131,8 +142,10 @@ def main():
     
     total_time = time.time() - s_time
     print('run time: %.3f' % total_time)
+    print('real run time: %.3f' % tmp_total_time)
     print('ave dice: %.4f' % np.mean(dice_list))
     print('fps: %.3f' %(DATA_LEN/total_time))
+    print('real fps: %.3f' %(DATA_LEN/tmp_total_time))
 
 
 
