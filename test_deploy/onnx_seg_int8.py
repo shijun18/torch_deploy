@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '4'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 import torch
 import pycuda.driver as cuda
@@ -8,7 +8,7 @@ import numpy as np
 import tensorrt as trt
 import time
 
-from utils import get_path_with_annotation, postprocess, DataIterator
+from utils import get_path_with_annotation, postprocess, DataIterator, DataGenerator
 from calibrator import UNETCalibrator
 from torch.utils.data import DataLoader
 
@@ -16,7 +16,8 @@ from torch.utils.data import DataLoader
 
 # logger to capture errors, warnings, and other information during the build and inference phases
 TRT_LOGGER = trt.Logger()
-DATA_LEN = 10000
+DATA_LEN = 1000
+BATCH_SIZE = 4
 
 def build_engine(onnx_file_path,engine_file_path=None,save_engine=False, calib=None):
     # initialize TensorRT engine and parse ONNX model
@@ -81,18 +82,20 @@ def main():
     s_time = time.time()
 
     csv_path = 'test.csv'
-    # ONNX_FILE_PATH = "unet_bladder_trt_int8.onnx"
-    ONNX_FILE_PATH = "unet_bladder.onnx"
+    ONNX_FILE_PATH = "unet_bladder_bs4.onnx"
 
     data_list = get_path_with_annotation(csv_path,'path','Bladder')
     # initialize TensorRT engine and parse ONNX model
     calibration_cache = "unet_calibration_p40.cache"
     # calibration_cache = "unet_calibration.cache"
 
-    # calib = UNETCalibrator(data_list[:128], cache_file=calibration_cache,batch_size=32)
+    calib = UNETCalibrator(data_list[:128], cache_file=calibration_cache,batch_size=32)
 
     # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs8_p40.trt',save_engine=True,calib=calib)
-    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs8_p40.trt',save_engine=False)
+    # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs8_p40.trt',save_engine=False)
+
+    # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs4_p40.trt',save_engine=True,calib=calib)
+    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs4_p40.trt',save_engine=False)
 
     # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs8.trt',save_engine=True,calib=calib)
     # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs8.trt',save_engine=False)
@@ -101,12 +104,14 @@ def main():
     for binding in engine:
         if engine.binding_is_input(binding):  # we expect only one input
             input_shape = engine.get_binding_shape(binding)
-            input_size = trt.volume(input_shape) * engine.max_batch_size * np.dtype(np.float32).itemsize  # in bytes
+            input_size = trt.volume(input_shape) * np.dtype(np.float32).itemsize  # in bytes
+            # input_size = trt.volume(input_shape) * BATCH_SIZE * np.dtype(np.float32).itemsize  # in bytes
             device_input = cuda.mem_alloc(input_size)
         else:  # and one output
             output_shape = engine.get_binding_shape(binding)
             # create page-locked memory buffers (i.e. won't be swapped to disk)
-            host_output = cuda.pagelocked_empty(trt.volume(output_shape) * engine.max_batch_size, dtype=np.float32)
+            # host_output = cuda.pagelocked_empty(trt.volume(output_shape) * BATCH_SIZE, dtype=np.float32)
+            host_output = cuda.pagelocked_empty(trt.volume(output_shape), dtype=np.float32)
             device_output = cuda.mem_alloc(host_output.nbytes)
 
     # Create a stream in which to copy inputs/outputs and run inference.
@@ -114,9 +119,14 @@ def main():
 
     dice_list = []
     # preprocess input data
-
-    dataset = DataIterator(path_list=data_list,batch_size=1,roi_number=1,data_len=DATA_LEN)
-    data_loader = iter(dataset)
+    dataset = DataGenerator(path_list=data_list,roi_number=1,data_len=DATA_LEN)
+    data_loader = DataLoader(dataset,
+                        batch_size=4,
+                        shuffle=False,
+                        num_workers=2
+                        )
+    # dataset = DataIterator(path_list=data_list,batch_size=BATCH_SIZE,roi_number=1,data_len=DATA_LEN)
+    # data_loader = iter(dataset)
 
     tmp_total_time = 0
     for sample in data_loader:
@@ -128,15 +138,14 @@ def main():
         cuda.memcpy_htod_async(device_input, host_input, stream)
 
         # run inference
-        context.execute_async(batch_size=1,bindings=[int(device_input), int(device_output)], stream_handle=stream.handle)
+        context.execute_async(batch_size=BATCH_SIZE,bindings=[int(device_input), int(device_output)], stream_handle=stream.handle)
         cuda.memcpy_dtoh_async(host_output, device_output, stream)
         stream.synchronize()
-
         tmp_total_time += time.time() - tmp_time
 
         # postprocess results
         
-        output_data = torch.Tensor(host_output).reshape(engine.max_batch_size, 2, 512, 512)
+        output_data = torch.Tensor(host_output).reshape(BATCH_SIZE, 2, 512, 512)
         dice = postprocess(output_data,lab)
         dice_list.append(dice)
     

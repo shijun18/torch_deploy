@@ -15,7 +15,7 @@ DATA_LEN = 1000
 
 s_time = time.time()
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '4'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 csv_path = 'test.csv'
 # weight_path = 'unet_bladder_trt_int8.pth'
@@ -33,10 +33,9 @@ print(len(data_list))
 
 dataset = DataGenerator(path_list=data_list,roi_number=1,data_len=DATA_LEN)
 data_loader = DataLoader(dataset,
-                        batch_size=1,
+                        batch_size=4,
                         shuffle=False,
-                        num_workers=2,
-                        pin_memory=True
+                        num_workers=2
                         )
 
 print(len(data_loader))
@@ -53,9 +52,9 @@ tmp_total_time = 0
 for sample in data_loader:
     img = sample['image']
     lab = sample['label']
-    img = img.cuda()
-
+    
     tmp_time = time.time()
+    img = img.cuda()
     output = model_trt(img)
     tmp_total_time += time.time() - tmp_time
     dice = postprocess(output,lab)

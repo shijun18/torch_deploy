@@ -592,7 +592,11 @@ torch.save(model_trt.state_dict(), TRT_FILE_PATH)
     trt_maxwell_fp32_icudnn_int8x4_128x128_relu_small_nn_v1
     ~~~
 
-    
+
+
+## 结论
+
+- 相比FP32，FP16与Int8能够有效提高推理速度
 
 
 
