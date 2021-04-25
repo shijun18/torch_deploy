@@ -172,9 +172,8 @@ def preprocess_image(img_path):
 
 
 def postprocess(output_data, target):
-    output = F.softmax(output_data, dim=1) #n,c,h,w
-    output = torch.argmax(output, 1) #n,h,w
-    output = output.detach().cpu().numpy() 
+    output = F.softmax(output_data, dim=1).detach().cpu().numpy() #n,c,h,w
+    output = np.argmax(output, 1) #n,h,w
     target = target.detach().cpu().numpy() 
     total_dice = 0.
     for i in range(output.shape[0]):

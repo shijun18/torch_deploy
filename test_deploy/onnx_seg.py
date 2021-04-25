@@ -7,7 +7,7 @@ import pycuda.autoinit
 import numpy as np
 import tensorrt as trt
 import time
-
+from torch.nn import functional as F
 from utils import get_path_with_annotation,postprocess,DataIterator,DataGenerator
 from multiprocessing import Pool
 from torch.utils.data import DataLoader
@@ -15,9 +15,9 @@ from torch.utils.data import DataLoader
 # logger to capture errors, warnings, and other information during the build and inference phases
 TRT_LOGGER = trt.Logger()
 DATA_LEN = 1000
+BATCH_SIZE = 1
 
-
-def build_engine(onnx_file_path,engine_file_path=None,save_engine=False):
+def build_engine(onnx_file_path,engine_file_path=None,save_engine=True):
     # initialize TensorRT engine and parse ONNX model
     if  engine_file_path is not None and os.path.exists(engine_file_path):
         print("Reading engine from file: {}".format(engine_file_path))
@@ -34,7 +34,7 @@ def build_engine(onnx_file_path,engine_file_path=None,save_engine=False):
             # allow TensorRT to use up to 1GB of GPU memory for tactic selection
             builder.max_workspace_size = 1 << 30
             # we have only one image in batch
-            builder.max_batch_size = 1
+            builder.max_batch_size = BATCH_SIZE
             # use FP16 mode if possible
             if builder.platform_has_fast_fp16:
                 builder.fp16_mode = True
@@ -81,21 +81,34 @@ def main():
 
     csv_path = 'test.csv'
     ONNX_FILE_PATH = "unet_bladder.onnx"
+    # ONNX_FILE_PATH = "unet_bladder_bs4.onnx"
+    # ONNX_FILE_PATH = "unet_bladder_bs8.onnx"
+
+    # ENGINE_FILE_PATH = './v100/unet_bladder_fp16.trt'
+    # ENGINE_FILE_PATH = './v100/unet_bladder_fp16_bs4.trt'
+    # ENGINE_FILE_PATH = './v100/unet_bladder_fp16_bs8.trt'
+
+    ENGINE_FILE_PATH = './p40/unet_bladder_fp16_p40.trt'
+    # ENGINE_FILE_PATH = './p40/unet_bladder_fp16_bs4_p40.trt'
+    # ENGINE_FILE_PATH = './p40/unet_bladder_fp16_bs8_p40.trt'
+
 
     data_list = get_path_with_annotation(csv_path,'path','Bladder')
     # initialize TensorRT engine and parse ONNX model
-    # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_fp16_p40.trt')
-    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_fp16.trt')
+    engine, context = build_engine(ONNX_FILE_PATH,ENGINE_FILE_PATH)
+
     # get sizes of input and output and allocate memory required for input data and for output data
     for binding in engine:
         if engine.binding_is_input(binding):  # we expect only one input
             input_shape = engine.get_binding_shape(binding)
-            input_size = trt.volume(input_shape) * engine.max_batch_size * np.dtype(np.float32).itemsize  # in bytes
+            # input_size = trt.volume(input_shape) * engine.max_batch_size * np.dtype(np.float32).itemsize  # in bytes
+            input_size = trt.volume(input_shape) * np.dtype(np.float32).itemsize  # in bytes
             device_input = cuda.mem_alloc(input_size)
         else:  # and one output
             output_shape = engine.get_binding_shape(binding)
             # create page-locked memory buffers (i.e. won't be swapped to disk)
-            host_output = cuda.pagelocked_empty(trt.volume(output_shape) * engine.max_batch_size, dtype=np.float32)
+            # host_output = cuda.pagelocked_empty(trt.volume(output_shape) * engine.max_batch_size, dtype=np.float32)
+            host_output = cuda.pagelocked_empty(trt.volume(output_shape), dtype=np.float32)
             device_output = cuda.mem_alloc(host_output.nbytes)
 
     # Create a stream in which to copy inputs/outputs and run inference.
@@ -106,12 +119,12 @@ def main():
 
     dataset = DataGenerator(path_list=data_list,roi_number=1,data_len=DATA_LEN)
     data_loader = DataLoader(dataset,
-                        batch_size=1,
+                        batch_size=BATCH_SIZE,
                         shuffle=False,
                         num_workers=2
                         )
     print(len(data_loader))
-    
+
     # dataset = DataIterator(path_list=data_list,batch_size=1,roi_number=1,data_len=DATA_LEN)
     # data_loader = iter(dataset)
 
@@ -127,24 +140,39 @@ def main():
         cuda.memcpy_htod_async(device_input, host_input, stream)
 
         # run inference
-        context.execute_async(batch_size=1, bindings=[int(device_input), int(device_output)], stream_handle=stream.handle)
+        context.execute_async(batch_size=BATCH_SIZE, bindings=[int(device_input), int(device_output)], stream_handle=stream.handle)
         cuda.memcpy_dtoh_async(host_output, device_output, stream)
         stream.synchronize()
         tmp_total_time += time.time() - tmp_time
         # postprocess results
         
-        output_data = torch.Tensor(host_output).reshape(engine.max_batch_size, 2, 512, 512)
+        output_data = torch.Tensor(host_output).reshape(BATCH_SIZE, 2, 512, 512)
         
-        post_time = time.time()
-        dice = postprocess(output_data,lab)
-        post_total_time += time.time() - post_time
-        dice_list.append(dice)
+        # A torch
+        # output = F.softmax(output_data, dim=1) #n,c,h,w
+        # post_time = time.time()
+        # output = torch.argmax(output, 1).detach().cpu().numpy() #n,h,w
+        # post_total_time += time.time() - post_time
+        
+        # B numpy
+        output_1 = F.softmax(output_data, dim=1) #n,c,h,w
+        # post_time = time.time()
+        output_1 = np.argmax(output_1.detach().cpu().numpy(), 1) #n,h,w
+        # post_total_time += time.time() - post_time
+
+        # A == B, but A is time-consuming 
+        # assert (output == output_1).all()
+
+        # post_time = time.time()
+        # dice = postprocess(output_data,lab)
+        # post_total_time += time.time() - post_time
+        # dice_list.append(dice)
     
     total_time = time.time() - s_time
     print('run time: %.3f' % total_time)
-    print('post time: %.3f' % post_total_time)
+    # print('post time: %.3f' % post_total_time)
     print('real run time: %.3f' % tmp_total_time)
-    print('ave dice: %.4f' % np.mean(dice_list))
+    # print('ave dice: %.4f' % np.mean(dice_list))
     print('fps: %.3f' %(DATA_LEN/total_time))
     print('real fps: %.3f' %(DATA_LEN/tmp_total_time))
 

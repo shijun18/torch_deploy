@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 import onnx
 import torch
 
@@ -57,15 +57,22 @@ def main():
     dice = postprocess(output, target)
 
     # convert to trt --------------------------------------------------------------------------------------------------
-    # TRT_FILE_PATH = "unet_bladder_trt_fp16_p40.pth" 
-    # TRT_FILE_PATH = "unet_bladder_trt_fp16_bs8_p40.pth" 
-    # TRT_FILE_PATH = "unet_bladder_trt_int8_bs8_p40.pth" 
-    TRT_FILE_PATH = "unet_bladder_trt_cali_int8_bs8_p40.pth"
+    # p40-----------------------------------------
+    # TRT_FILE_PATH = "./p40/unet_bladder_trt_fp16_p40.pth" 
+    # TRT_FILE_PATH = "./p40/unet_bladder_trt_fp16_bs8_p40.pth" 
 
-    # TRT_FILE_PATH = "unet_bladder_trt_fp16.pth" 
-    # TRT_FILE_PATH = "unet_bladder_trt_fp16_bs4.pth" 
-    # TRT_FILE_PATH = "unet_bladder_trt_int8_bs4.pth" 
-    # TRT_FILE_PATH = "unet_bladder_trt_cali_int8_bs4.pth" 
+    # TRT_FILE_PATH = "./p40/unet_bladder_trt_int8_bs8_p40.pth" 
+    # TRT_FILE_PATH = "./p40/unet_bladder_trt_cali_int8_bs8_p40.pth"
+    
+    # v100-----------------------------------------
+    # TRT_FILE_PATH = "./v100/unet_bladder_trt_fp16.pth" 
+    # TRT_FILE_PATH = "./v100/unet_bladder_trt_fp16_bs4.pth" 
+    # TRT_FILE_PATH = "./v100/unet_bladder_trt_fp16_bs8.pth" 
+
+    # TRT_FILE_PATH = "./v100/unet_bladder_trt_int8_bs4.pth" 
+    # TRT_FILE_PATH = "./v100/unet_bladder_trt_int8_bs8.pth" 
+    # TRT_FILE_PATH = "./v100/unet_bladder_trt_cali_int8_bs4.pth" 
+    TRT_FILE_PATH = "./v100/unet_bladder_trt_cali_int8_bs8.pth" 
 
     data = torch.randn(1, 1, 512, 512).cuda()
 
