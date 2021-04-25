@@ -9,13 +9,13 @@ from utils import get_path_with_annotation,postprocess,DataGenerator
 from model import unet_2d
 
 
-AMP_FLAG = True
+AMP_FLAG = False
 
-DATA_LEN = 1000
+DATA_LEN = 10000
 
 s_time = time.time()
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 csv_path = 'test.csv'
 weight_path = 'unet_bladder.pth'

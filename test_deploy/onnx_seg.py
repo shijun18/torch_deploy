@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 import torch
 import pycuda.driver as cuda
@@ -8,7 +8,7 @@ import numpy as np
 import tensorrt as trt
 import time
 
-from utils import get_path_with_annotation,postprocess,DataIterator
+from utils import get_path_with_annotation,postprocess,DataIterator,DataGenerator
 from multiprocessing import Pool
 from torch.utils.data import DataLoader
 
@@ -84,8 +84,8 @@ def main():
 
     data_list = get_path_with_annotation(csv_path,'path','Bladder')
     # initialize TensorRT engine and parse ONNX model
-    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_fp16_p40.trt')
-    # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_fp16.trt')
+    # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_fp16_p40.trt')
+    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_fp16.trt')
     # get sizes of input and output and allocate memory required for input data and for output data
     for binding in engine:
         if engine.binding_is_input(binding):  # we expect only one input
@@ -104,13 +104,24 @@ def main():
     dice_list = []
     # preprocess input data
 
-    dataset = DataIterator(path_list=data_list,batch_size=1,roi_number=1,data_len=DATA_LEN)
-    data_loader = iter(dataset)
+    dataset = DataGenerator(path_list=data_list,roi_number=1,data_len=DATA_LEN)
+    data_loader = DataLoader(dataset,
+                        batch_size=1,
+                        shuffle=False,
+                        num_workers=2
+                        )
+    print(len(data_loader))
+    
+    # dataset = DataIterator(path_list=data_list,batch_size=1,roi_number=1,data_len=DATA_LEN)
+    # data_loader = iter(dataset)
 
+    tmp_total_time = 0
+    post_total_time = 0
     for sample in data_loader:
         img = sample['image']
         lab = sample['label']
- 
+
+        tmp_time = time.time()
         host_input = np.array(img, dtype=np.float32, order='C')
         # print(host_input.shape)
         cuda.memcpy_htod_async(device_input, host_input, stream)
@@ -119,18 +130,23 @@ def main():
         context.execute_async(batch_size=1, bindings=[int(device_input), int(device_output)], stream_handle=stream.handle)
         cuda.memcpy_dtoh_async(host_output, device_output, stream)
         stream.synchronize()
-
+        tmp_total_time += time.time() - tmp_time
         # postprocess results
         
         output_data = torch.Tensor(host_output).reshape(engine.max_batch_size, 2, 512, 512)
-        # dice = postprocess(output_data,torch.unsqueeze(torch.from_numpy(lab),0))
+        
+        post_time = time.time()
         dice = postprocess(output_data,lab)
+        post_total_time += time.time() - post_time
         dice_list.append(dice)
     
     total_time = time.time() - s_time
     print('run time: %.3f' % total_time)
+    print('post time: %.3f' % post_total_time)
+    print('real run time: %.3f' % tmp_total_time)
     print('ave dice: %.4f' % np.mean(dice_list))
     print('fps: %.3f' %(DATA_LEN/total_time))
+    print('real fps: %.3f' %(DATA_LEN/tmp_total_time))
 
 
 if __name__ == '__main__':

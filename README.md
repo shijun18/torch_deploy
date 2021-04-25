@@ -1,3 +1,5 @@
+
+
 # Torch模型部署实践 (Python)——低精度推理
 
 因科研需要，在过去一周，学习了torch模型部署的相关知识并付诸实践，在此简单记录学习过程。由于时间有限，该项目当前只包含`Python`版本的相关实现，后面会更新`C++`版本 (不拖延的话:stuck_out_tongue_winking_eye:)。
@@ -225,26 +227,27 @@ output = model_trt(img)
 
 使用torch2trt进行部署的过程与直接用torch推理的过程基本一致。*注意：TRT模型虽然是通过`torch.save()`保存的，但是必须使用 `TRTModule`进行实例化！！*
 
-##### 结果分析
+##### 结果分析（$\surd$ 表示进行了重复实验）
 
-- **FP32 Baseline**
-  - **Batch Size = 1**
-
-    | 方案  | GPU  | #Samples | runtime (s) | FPS    |
-    | ----- | ---- | -------- | ----------- | ------ |
-    | torch | V100 | 10000    | 238.695     | 41.894 |
-    | torch | V100 | 1000     | 38.384      | 25.895 |
-    | torch | P40  | 10000    | 404.685     | 24.711 |
-    | torch | P40  | 1000     | 47.508      | 21.786 |
+- **FP32 Baseline **（dice:0.9233/0.9236）
+  
+- **Batch Size = 1**
+  
+    | 方案  | GPU  | #Samples | runtime (s) | FPS    | Status  |
+    | ----- | ---- | -------- | ----------- | ------ | ------- |
+    | torch | V100 | 10000    | 216.807     | 46.124 | $\surd$ |
+    | torch | V100 | 1000     | 25.712      | 38.893 | $\surd$ |
+    | torch | P40  | 10000    | 404.685     | 24.711 | $\surd$ |
+    | torch | P40  | 1000     | 47.508      | 21.786 | $\surd$ |
     
   - **Batch Size = 4**
   
-    | 方案  | GPU  | #Samples | runtime (s) | FPS        |
-    | ----- | ---- | -------- | ----------- | ---------- |
-    | torch | V100 | 10000    | 211.266     | **47.334** |
-    | torch | V100 | 1000     | 33.648      | 29.719     |
-    | torch | P40  | 10000    | 385.357     | 25.950     |
-    | torch | P40  | 1000     | 44.456      | 22.494     |
+    | 方案  | GPU  | #Samples | runtime (s) | FPS        | Status  |
+    | ----- | ---- | -------- | ----------- | ---------- | ------- |
+    | torch | V100 | 10000    | 198.947     | **50.265** | $\surd$ |
+    | torch | V100 | 1000     | 23.809      | 42.000     | $\surd$ |
+    | torch | P40  | 10000    | 385.357     | 25.950     | $\surd$ |
+    | torch | P40  | 1000     | 44.456      | 22.494     | $\surd$ |
   - **Batch Size = 8**  ps：实验所用v100显卡只有16GB显存，input shape = (1,512,512)，batch size无法设置 > 5 :sweat_smile:
   
     | 方案  | GPU  | #Samples | runtime (s) | FPS    |
@@ -256,16 +259,16 @@ output = model_trt(img)
   
      **发现-0：**增大`batch size`可以有限地降低总推理时间，并不是理想中线性的加速。**不知道具体原因，需要去了解torch调用GPU的内部机制（新坑）**
   
-- **FP16 results** （dice:0.9233）
+- **FP16 results** （dice:0.9233/0.9236）
 
-  - **Batch Size = 1**（$\surd$ 表示进行了重复实验）
+  - **Batch Size = 1**
 
-    | 方案             | GPU  | #Samples | runtime (s) | FPS         | Status  |
-    | ---------------- | ---- | -------- | ----------- | ----------- | ------- |
-    | torch + 混合精度 | V100 | 10000    | 151.227     | 66.126      | $\surd$ |
-    | torch + 混合精度 | V100 | 1000     | 25.705      | 38.903      | $\surd$ |
-    | torch + 混合精度 | P40  | 10000    | 474.733     | 21.064      | $\surd$ |
-    | torch + 混合精度 | P40  | 1000     | 53.330      | 18.751      | $\surd$ |
+    | 方案             | GPU  | #Samples | runtime (s) | FPS    | Status  |
+    | ---------------- | ---- | -------- | ----------- | ------ | ------- |
+    | torch + 混合精度 | V100 | 10000    | 141.376     | 70.733 | $\surd$ |
+    | torch + 混合精度 | V100 | 1000     | 17.618      | 56.761 | $\surd$ |
+    | torch + 混合精度 | P40  | 10000    | 474.733     | 21.064 | $\surd$ |
+    | torch + 混合精度 | P40  | 1000     | 53.330      | 18.751 | $\surd$ |
     
     **发现-1：**目前torch对混合精度的支持做得很好，在预测过程中调用`torch.cuda.amp.autocast`即可，对比FP32的推理结果可以看到，使用相同的`batch size`：在V100上，混合精度的使用可以有效地提高推理速度，可获得约$60\%$的性能提升，而且**样本规模越大，效果越明显**。通过`nvprof`可以看到：
 
@@ -305,11 +308,35 @@ output = model_trt(img)
     | 方案      | GPU  | #Samples | Runtime (s) | FPS         | Status  |
     | --------- | ---- | -------- | ----------- | ----------- | ------- |
     | torch2trt | V100 | 10000    | **98.843**  | **101.170** | $\surd$ |
-    | torch2trt | V100 | 1000     | 29.725      | 33.641      | $\surd$ |
+    | torch2trt | V100 | 1000     | 15.651      | 63.894      | $\surd$ |
     | torch2trt | P40  | 10000    | 247.966     | 40.328      | $\surd$ |
     | torch2trt | P40  | 1000     | 34.430      | 29.044      | $\surd$ |
-    
-    **发现-2：**可以看到： `ONNX + TensorRT`的FP16推理方案**表现极差**，其原因目前还未准确定位，后续会继续更新。与之相反，基于`torch2trt`，直接使用FP16的 `TRT` 模型进行推理取得了最好的性能，**FPS甚至达到了100以上**，相比torch的混合精度模式，**性能提升了$50\%$左右！！**
+  
+  - **Batch Size = 4**
+	
+	  | 方案             | GPU  | #Samples | Runtime (s) | FPS    | Status  |
+    | ---------------- | ---- | -------- | ----------- | ------ | ------- |
+    | torch + 混合精度 | V100 | 10000    | 118.589     | 84.325 | $\surd$ |
+    | torch + 混合精度 | V100 | 1000     | 15.757      | 63.464 | $\surd$ |
+    | torch + 混合精度 | P40  | 10000    |             |        | $\surd$ |
+    | torch + 混合精度 | P40  | 1000     |             |        | $\surd$ |
+  
+    | 方案      | GPU  | #Samples | Runtime (s) | FPS         | Status  |
+    | --------- | ---- | -------- | ----------- | ----------- | ------- |
+    | torch2trt | V100 | 10000    | **83.184**  | **120.215** | $\surd$ |
+    | torch2trt | V100 | 1000     | 13.612      | 73.463      | $\surd$ |
+    | torch2trt | P40  | 10000    |             |             | $\surd$ |
+    | torch2trt | P40  | 1000     |             |             | $\surd$ |
+  
+    - `nvprof` : torch2trt
+  
+      ~~~python
+      void xmma_trt::gemm::kernel<......>
+      ~~~
+  
+      
+  
+    **发现-2：**可以看到： `ONNX + TensorRT`的FP16推理方案**表现极差**，其原因目前还未准确定位，后续会继续更新。与之相反，基于`torch2trt`，直接使用FP16的 `TRT` 模型进行推理取得了最好的性能，**FPS甚至达到了120以上**，相比torch的混合精度模式，**性能提升了$50\%$左右！！**
 
 ---
 
@@ -533,37 +560,37 @@ torch.save(model_trt.state_dict(), TRT_FILE_PATH)
 
   - **Batch Size = 1**
 
-    | 方案                   | GPU  | #Samples | runtime (dice)    | FPS    | Status  |
-    | ---------------------- | ---- | -------- | ----------------- | ------ | ------- |
-    | onnx + TensorRT        | V100 | 10000    |                   |        |         |
-    | onnx + TensorRT        | V100 | 1000     |                   |        |         |
-    | onnx + TensorRT        | P40  | 10000    | 805.397 (0.9243)  | 12.416 |         |
-    | onnx + TensorRT        | P40  | 1000     | 77.130 (0.9240)   | 12.965 |         |
-    | torch2trt              | V100 | 10000    | 125.850（0.8806） | 75.460 |         |
-    | torch2trt              | V100 | 1000     | 39.599 (0.8795)   | 25.253 |         |
-    | torch2trt              | P40  | 10000    | 143.749 (0.8922)  | 69.566 | $\surd$ |
-    | torch2trt              | P40  | 1000     | 22.741 (0.8921)   | 43.973 | $\surd$ |
-    | torch2trt + calibrator | V100 | 10000    | 128.788           | 77.647 |         |
-    | torch2trt + calibrator | V100 | 1000     | 28.699            | 34.844 |         |
-    | torch2trt + calibrator | P40  | 10000    | 148.497 (0.9219)  | 67.341 | $\surd$ |
-    | torch2trt + calibrator | P40  | 1000     | 22.678 (0.9216)   | 44.096 | $\surd$ |
+    | 方案                   | GPU  | #Samples | runtime (dice)    | FPS        | Status  |
+    | ---------------------- | ---- | -------- | ----------------- | ---------- | ------- |
+    | onnx + TensorRT        | V100 | 10000    |                   |            |         |
+    | onnx + TensorRT        | V100 | 1000     |                   |            |         |
+    | onnx + TensorRT        | P40  | 10000    |                   |            |         |
+    | onnx + TensorRT        | P40  | 1000     |                   |            |         |
+    | torch2trt              | V100 | 10000    | 125.504（0.9035） | 79.679     | $\surd$ |
+    | torch2trt              | V100 | 1000     | 16.801 (0.9028)   | 59.521     | $\surd$ |
+    | torch2trt              | P40  | 10000    | 143.749 (0.8922)  | **69.566** | $\surd$ |
+    | torch2trt              | P40  | 1000     | 22.741 (0.8921)   | 43.973     | $\surd$ |
+    | torch2trt + calibrator | V100 | 10000    | 125.162 (0.9219)  | **79.896** | $\surd$ |
+    | torch2trt + calibrator | V100 | 1000     | 17.397（0.9216）  | 57.480     | $\surd$ |
+    | torch2trt + calibrator | P40  | 10000    | 148.497 (0.9219)  | 67.341     | $\surd$ |
+    | torch2trt + calibrator | P40  | 1000     | 22.678 (0.9216)   | 44.096     | $\surd$ |
 
   - **Batch Size = 4**
 
-    | 方案                   | GPU  | #Samples | runtime (dice)    | FPS    | Status  |
-    | ---------------------- | ---- | -------- | ----------------- | ------ | ------- |
-    | onnx + TensorRT        | V100 | 10000    |                   |        |         |
-    | onnx + TensorRT        | V100 | 1000     |                   |        |         |
-    | onnx + TensorRT        | P40  | 10000    | 805.397 (0.9243)  | 12.416 |         |
-    | onnx + TensorRT        | P40  | 1000     | 77.130 (0.9240)   | 12.965 |         |
-    | torch2trt              | V100 | 10000    | 125.850（0.8806） | 75.460 |         |
-    | torch2trt              | V100 | 1000     | 39.599 (0.8795)   | 25.253 |         |
-    | torch2trt              | P40  | 10000    | 130.954 (0.8922)  | 76.362 | $\surd$ |
-    | torch2trt              | P40  | 1000     | 21.102 (0.8921)   | 44.791 | $\surd$ |
-    | torch2trt + calibrator | V100 | 10000    | 128.788           | 77.647 |         |
-    | torch2trt + calibrator | V100 | 1000     | 28.699            | 34.844 |         |
-    | torch2trt + calibrator | P40  | 10000    | 132.727 (0.9219)  | 75.343 | $\surd$ |
-    | torch2trt + calibrator | P40  | 1000     | 21.880 (0.9216)   | 45.704 | $\surd$ |
+    | 方案                   | GPU  | #Samples | runtime (dice)    | FPS        | Status  |
+    | ---------------------- | ---- | -------- | ----------------- | ---------- | ------- |
+    | onnx + TensorRT        | V100 | 10000    |                   |            |         |
+    | onnx + TensorRT        | V100 | 1000     |                   |            |         |
+    | onnx + TensorRT        | P40  | 10000    |                   |            |         |
+    | onnx + TensorRT        | P40  | 1000     |                   |            |         |
+    | torch2trt              | V100 | 10000    | 105.532（0.9035） | **94.758** | $\surd$ |
+    | torch2trt              | V100 | 1000     | 15.021 (0.9028)   | 66.573     | $\surd$ |
+    | torch2trt              | P40  | 10000    | 130.954 (0.8922)  | 76.362     | $\surd$ |
+    | torch2trt              | P40  | 1000     | 21.102 (0.8921)   | 44.791     | $\surd$ |
+    | torch2trt + calibrator | V100 | 10000    | 105.639 (0.9219)  | 94.662     | $\surd$ |
+    | torch2trt + calibrator | V100 | 1000     | 14.666 (0.9216)   | 68.184     | $\surd$ |
+    | torch2trt + calibrator | P40  | 10000    | 132.727 (0.9219)  | **75.343** | $\surd$ |
+    | torch2trt + calibrator | P40  | 1000     | 21.880 (0.9216)   | 45.704     | $\surd$ |
 
   - **Batch Size = 8**
 
@@ -575,7 +602,7 @@ torch.save(model_trt.state_dict(), TRT_FILE_PATH)
     | onnx + TensorRT        | P40  | 1000     | 61.818 (0.9240) | 12.965 |         |
     | torch2trt              | V100 | 10000    | -                | -      |         |
     | torch2trt              | V100 | 1000     | -                | -      |         |
-    | torch2trt              | P40  | 10000    | 127.922 (0.8922) | 78.173 | $\surd$ |
+    | torch2trt              | P40  | 10000    | 127.922 (0.8922) | **78.173** | $\surd$ |
     | torch2trt              | P40  | 1000     | 21.979 (0.8921)  | 46.901 | $\surd$ |
     | torch2trt + calibrator | V100 | 10000    | -                | -      |         |
     | torch2trt + calibrator | V100 | 1000     | -                | -      |         |
@@ -584,7 +611,7 @@ torch.save(model_trt.state_dict(), TRT_FILE_PATH)
 
 - `nvprof` 
 
-  - torch2trt (+ calibrator)
+  - P40：torch2trt (+ calibrator)
 
     ~~~python
     trt_maxwell_int8x4_icudnn_int8x4_128x128_relu_small_nn_v1
@@ -592,15 +619,26 @@ torch.save(model_trt.state_dict(), TRT_FILE_PATH)
     trt_maxwell_fp32_icudnn_int8x4_128x128_relu_small_nn_v1
     ~~~
 
+  - V100：torch2trt (+ calibrator)
 
+      ~~~python
+      trt_volta_int8x4_icudnn_int8x4_128x128_relu_small_nn_v1
+      trt_volta_int8x4_icudnn_int8x4_128x64_relu_xregs_large_nn_v1
+      trt_volta_fp32_icudnn_int8x4_128x64_relu_small_nn_v1
+      ~~~
+  
+  
 
 ## 结论
 
-- 相比FP32，FP16与Int8能够有效提高推理速度
+- 相比FP32，FP16与Int8能够有效提高推理速度，不同方案在不同设备提升程度不同，如：由于P40不包含`Tensor Core`，使用torch自带的FP16混合精度方案，效率反而有所下降，而在V100上，torch的混合精度能够显著地提高推理速度。
+- 通过对比分析，可知基于`torch2trt`的低精度推理方案（FP16或Int8）在不同设备上均取得了**最好的性能**，其原因一是在于`TensorRT`对推理过程进行了优化，二是torch自身的内存管理策略也发挥正向作用。**值得注意的是：对V100而言，Int8推理相比FP16推理并没有的速度提升，反而差许多，**猜测原因是V100没有针对Int8做特别的计算优化，而Tensor Core的混精计算效率很高。
+- FP16的推理精度与FP32基本一致，而Int8推理所带来的精度损失亦很小，可忽略不计。前提是需要利用真实数据进行**数据校准**，否则精度损失较多。
+- 提高`Batch Size`能够有效提高推理速度。
+- **推理的大部分时间均在处理输入数据以及后处理计算metric，实际GPU推理时间很少。**
 
+## 遗留问题
 
-
-:cry:*由于在实验室没法独享机器，测试的数据不准确，分析和后续测试会补充！*
-
-
+- `onnx + TensorRT`方案性能远低于其他方案，通过对比`torch2trt`源码并未找到具体原因:cry:，**可能是因为包含了计算metric的过程，导致时间偏长。**
+- **本实验包含了计算metric的过程，理论上，在推理阶段应不包括该过程，后续会提供纯净版本**
 

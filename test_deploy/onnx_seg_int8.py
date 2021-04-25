@@ -86,8 +86,8 @@ def main():
 
     data_list = get_path_with_annotation(csv_path,'path','Bladder')
     # initialize TensorRT engine and parse ONNX model
-    calibration_cache = "unet_calibration_p40.cache"
-    # calibration_cache = "unet_calibration.cache"
+    # calibration_cache = "unet_calibration_p40.cache"
+    calibration_cache = "unet_calibration.cache"
 
     calib = UNETCalibrator(data_list[:128], cache_file=calibration_cache,batch_size=32)
 
@@ -95,10 +95,10 @@ def main():
     # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs8_p40.trt',save_engine=False)
 
     # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs4_p40.trt',save_engine=True,calib=calib)
-    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs4_p40.trt',save_engine=False)
+    # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs4_p40.trt',save_engine=False)
 
-    # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs8.trt',save_engine=True,calib=calib)
-    # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs8.trt',save_engine=False)
+    # engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs4.trt',save_engine=True,calib=calib)
+    engine, context = build_engine(ONNX_FILE_PATH,'unet_bladder_int8_bs4.trt',save_engine=False)
 
     # get sizes of input and output and allocate memory required for input data and for output data
     for binding in engine:
@@ -121,7 +121,7 @@ def main():
     # preprocess input data
     dataset = DataGenerator(path_list=data_list,roi_number=1,data_len=DATA_LEN)
     data_loader = DataLoader(dataset,
-                        batch_size=4,
+                        batch_size=BATCH_SIZE,
                         shuffle=False,
                         num_workers=2
                         )
