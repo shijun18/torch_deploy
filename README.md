@@ -13,7 +13,7 @@
 本项目实验所用的主要软硬件环境如下：
 
 - **TensorRT Version**: 7.2.2.3
-- **NVIDIA GPU**: Tesla V100 (16GB) / P40 (24GB) / P100 (16GB),  (*PASCAL 架构不包含Tensor Core*)
+- **NVIDIA GPU**: Tesla V100 (16GB) / P40 (24GB),  (*PASCAL 架构不包含Tensor Core*)
 - **NVIDIA Driver Version**: 450.102.04
 - **CUDA Version**: 11.0
 - **CUDNN Version**: 8.0.5
