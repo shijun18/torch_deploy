@@ -40,7 +40,7 @@
 
 除了上述方案，也可以采取下面这个更为直接的方案（**Plan B**）：
 
-- **Step1**: 高精度Torch模型直接转化为低精度**TRT模型**，即`fp32.pth` >> `fp16.pth` 或`int.pth`
+- **Step1**: 高精度Torch模型直接转化为低精度**TRT模型**，即`fp32.pth` >> `fp16.pth` 或`int8.pth`
 - **Step2**: 利用TensorRT对低精度模型进行部署
 
 **Plan B** 依赖于第三方库:`torch2trt`，生成低精度模型后，推理部署非常简单，类似于直接使用torch推理。
