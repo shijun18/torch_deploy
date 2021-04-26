@@ -584,7 +584,7 @@ torch.save(model_trt.state_dict(), TRT_FILE_PATH)
   | torch2trt + calibrator | 4          | 10000    | 147.194     | 67.937     |
   | torch2trt + calibrator | 8          | 10000    | 144.106     | **69.394** |
 
-	**发现-3：**可以看到：`onnx + TensorRT`方案性能比`torch2trt`差，一是由于其推理过程加了同步语句` stream.synchronize()`，二是`torch2trt`的内存机制。
+	**发现-3：**可以看到：`onnx + TensorRT`方案性能比`torch2trt`差，一是由于其推理过程加了同步语句` stream.synchronize()`，二是`torch2trt`的内存管理机制优于前者。
 	
 - **nvprof** 
 
@@ -606,15 +606,15 @@ torch.save(model_trt.state_dict(), TRT_FILE_PATH)
     
 - **Dice系数对比** (Samples=10000)
 
-  | 方案                          | Best FPS on V100 | Best FPS on P40 | Dice   | Deviation   |
-| ----------------------------- | ---------------- | --------------- | ------ | ----------- |
-    | FP32 (torch)                  | 53.128           | 25.241          | 0.9236 | 0           |
-    | FP16 (torch + 混合精度)       | 92.768           | 22.936          | 0.9236 | 0           |
-    | FP16 (onnx + TensorRT)        | 94.773           | 37.184          | 0.9236 | 0           |
-    | FP16 (torch2trt)              | 120.820          | 42.996          | 0.9236 | 0           |
-    | Int8  (onnx + TensorRT)       | 77.799           | 63.161          | 0.9243 | **+0.0007** |
-    | Int8 (torch2trt + calibrator) | 88.923           | 69.394          | 0.9219 | -0.0017     |
-    | Int8 (torch2trt)              | 88.923           | 69.394          | 0.8922 | -0.0314     |
+  | 方案                          | Best FPS on V100 | Best FPS on P40 | Dice       | Deviation   |
+| ----------------------------- | ---------------- | --------------- | ---------- | ----------- |
+    | FP32 (torch)                  | 53.128           | 25.241          | 0.9236     | 0           |
+    | FP16 (torch + 混合精度)       | 92.768           | 22.936          | 0.9236     | 0           |
+    | FP16 (onnx + TensorRT)        | 94.773           | 37.184          | 0.9236     | 0           |
+    | FP16 (torch2trt)              | **120.820**      | 42.996          | 0.9236     | 0           |
+    | Int8  (onnx + TensorRT)       | 77.799           | 63.161          | **0.9243** | **+0.0007** |
+    | Int8 (torch2trt + calibrator) | 88.923           | **69.394**      | 0.9219     | -0.0017     |
+    | Int8 (torch2trt)              | 88.923           | 69.394          | 0.8922     | -0.0314     |
 
 ## 结论
 
