@@ -37,10 +37,10 @@ def main():
 
     # convert to ONNX --------------------------------------------------------------------------------------------------
     # dynamic
-    # ONNX_FILE_PATH = "unet_bladder_dynamic.onnx"
-    # ONNX_FILE_PATH = "unet_bladder.onnx"
-    # ONNX_FILE_PATH = "unet_bladder_bs4.onnx"
-    ONNX_FILE_PATH = "unet_bladder_bs8.onnx"
+    # ONNX_FILE_PATH = "./onnx_file/unet_bladder_dynamic.onnx"
+    # ONNX_FILE_PATH = "./onnx_file/unet_bladder.onnx"
+    # ONNX_FILE_PATH = "./onnx_file/unet_bladder_bs4.onnx"
+    ONNX_FILE_PATH = "./onnx_file/unet_bladder_bs8.onnx"
 
     input = torch.randn(8, 1, 512, 512, device='cuda')
     

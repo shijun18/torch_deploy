@@ -82,9 +82,9 @@ def main():
     s_time = time.time()
 
     csv_path = 'test.csv'
-    ONNX_FILE_PATH = "unet_bladder.onnx"
-    # ONNX_FILE_PATH = "unet_bladder_bs4.onnx"
-    # ONNX_FILE_PATH = "unet_bladder_bs8.onnx"
+    ONNX_FILE_PATH = "./onnx_file/unet_bladder.onnx"
+    # ONNX_FILE_PATH = "./onnx_file/unet_bladder_bs4.onnx"
+    # ONNX_FILE_PATH = "./onnx_file/unet_bladder_bs8.onnx"
 
     # ENGINE_FILE_PATH = './v100/unet_bladder_int8.trt'
     # ENGINE_FILE_PATH = './v100/unet_bladder_int8_bs4.trt'
@@ -98,8 +98,8 @@ def main():
 
     data_list = get_path_with_annotation(csv_path,'path','Bladder')
     # initialize TensorRT engine and parse ONNX model
-    calibration_cache = "unet_calibration_p40.cache"
-    # calibration_cache = "unet_calibration.cache"
+    calibration_cache = "./cache_file/unet_calibration_p40.cache"
+    # calibration_cache = "./cache_file/unet_calibration.cache"
 
     if os.path.exists(ENGINE_FILE_PATH):
         calib = None

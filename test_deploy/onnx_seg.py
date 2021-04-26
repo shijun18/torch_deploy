@@ -80,9 +80,9 @@ def main():
     s_time = time.time()
 
     csv_path = 'test.csv'
-    ONNX_FILE_PATH = "unet_bladder.onnx"
-    # ONNX_FILE_PATH = "unet_bladder_bs4.onnx"
-    # ONNX_FILE_PATH = "unet_bladder_bs8.onnx"
+    ONNX_FILE_PATH = "./onnx_file/unet_bladder.onnx"
+    # ONNX_FILE_PATH = "./onnx_file/unet_bladder_bs4.onnx"
+    # ONNX_FILE_PATH = "./onnx_file/unet_bladder_bs8.onnx"
 
     # ENGINE_FILE_PATH = './v100/unet_bladder_fp16.trt'
     # ENGINE_FILE_PATH = './v100/unet_bladder_fp16_bs4.trt'
