@@ -7,9 +7,9 @@ mycount=0
 while (($mycount  < 10))
 
 do
-    # python torch_seg.py
+    python torch_seg.py
     # python onnx_seg.py
-    python trt_seg.py
+    # python trt_seg.py
     # python onnx_seg_int8.py
     ((mycount++))
     echo $mycount
