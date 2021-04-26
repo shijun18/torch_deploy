@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 
 import torch
 import pycuda.driver as cuda
@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 # logger to capture errors, warnings, and other information during the build and inference phases
 TRT_LOGGER = trt.Logger()
 DATA_LEN = 1000
-BATCH_SIZE = 1
+BATCH_SIZE = 4
 
 def build_engine(onnx_file_path,engine_file_path=None,save_engine=True,calib=None):
     # initialize TensorRT engine and parse ONNX model
@@ -82,15 +82,15 @@ def main():
     s_time = time.time()
 
     csv_path = 'test.csv'
-    ONNX_FILE_PATH = "./onnx_file/unet_bladder.onnx"
-    # ONNX_FILE_PATH = "./onnx_file/unet_bladder_bs4.onnx"
+    # ONNX_FILE_PATH = "./onnx_file/unet_bladder.onnx"
+    ONNX_FILE_PATH = "./onnx_file/unet_bladder_bs4.onnx"
     # ONNX_FILE_PATH = "./onnx_file/unet_bladder_bs8.onnx"
 
     # ENGINE_FILE_PATH = './v100/unet_bladder_int8.trt'
-    # ENGINE_FILE_PATH = './v100/unet_bladder_int8_bs4.trt'
+    ENGINE_FILE_PATH = './v100/unet_bladder_int8_bs4.trt'
     # ENGINE_FILE_PATH = './v100/unet_bladder_int8_bs8.trt'
 
-    ENGINE_FILE_PATH = './p40/unet_bladder_int8_p40.trt'
+    # ENGINE_FILE_PATH = './p40/unet_bladder_int8_p40.trt'
     # ENGINE_FILE_PATH = './p40/unet_bladder_int8_bs4_p40.trt'
     # ENGINE_FILE_PATH = './p40/unet_bladder_int8_bs8_p40.trt'
     
@@ -98,8 +98,8 @@ def main():
 
     data_list = get_path_with_annotation(csv_path,'path','Bladder')
     # initialize TensorRT engine and parse ONNX model
-    calibration_cache = "./cache_file/unet_calibration_p40.cache"
-    # calibration_cache = "./cache_file/unet_calibration.cache"
+    # calibration_cache = "./cache_file/unet_calibration_p40.cache"
+    calibration_cache = "./cache_file/unet_calibration.cache"
 
     if os.path.exists(ENGINE_FILE_PATH):
         calib = None
@@ -155,15 +155,15 @@ def main():
         # postprocess results
         
         output_data = torch.Tensor(host_output).reshape(BATCH_SIZE, 2, 512, 512)
-        output = F.softmax(output_data, dim=1).detach().cpu().numpy() #n,c,h,w
-        output = np.argmax(output, 1) #n,h,w
-        # dice = postprocess(output_data,lab)
-        # dice_list.append(dice)
+        # output = F.softmax(output_data, dim=1).detach().cpu().numpy() #n,c,h,w
+        # output = np.argmax(output, 1) #n,h,w
+        dice = postprocess(output_data,lab)
+        dice_list.append(dice)
     
     total_time = time.time() - s_time
     print('run time: %.3f' % total_time)
     print('real run time: %.3f' % tmp_total_time)
-    # print('ave dice: %.4f' % np.mean(dice_list))
+    print('ave dice: %.4f' % np.mean(dice_list))
     print('fps: %.3f' %(DATA_LEN/total_time))
     print('real fps: %.3f' %(DATA_LEN/tmp_total_time))
 
